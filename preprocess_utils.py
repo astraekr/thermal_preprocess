@@ -364,3 +364,6 @@ class PreProcess:
         photo_list = self.get_photo_list(source_folder_name)
         for i in range(0, len(photo_list), sample_step):
             copyfile(source_folder_name + '/' + photo_list[i], destination_folder_name + '/' + photo_list[i])
+
+    def test(self):
+        print("A test github pycharm commit method")
