@@ -66,13 +66,12 @@ class PreProcess:
         print(self.folder_list)
         print("Storing in: " + str(stitched_folder_name))
 
-        # check if the folder exists
-        if os.path.exists(stitched_folder_name):
-            print("Folder exists, have you already done this stitching??")
-            exit()
-        else:
+        try:
             print("Making dir " + str(stitched_folder_name) + " for stitching")
             os.mkdir(stitched_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this stitching??")
+            return
 
         # get photo sizes
         size_photo = cv2.imread(self.parent_folder + '/' + self.folder_list[0] +
@@ -111,12 +110,12 @@ class PreProcess:
         photo_list = self.get_photo_list(folder_name, '*.png')
         destination_folder = folder_name+"_rotated90"
 
-        if os.path.exists(destination_folder):
-            print("Folder exists, have you already done this rotation??")
-            exit()
-        else:
-            print("Making dir "+str(destination_folder)+" for rotation")
+        try:
+            print("Making dir " + str(destination_folder) + " for rotation")
             os.mkdir(destination_folder)
+        except OSError:
+            print("Folder exists, have you already done this rotation??")
+            return
 
         for i, name in enumerate(photo_list):
             print(name)
@@ -160,7 +159,7 @@ class PreProcess:
         normalised_image = subtracted_scaled_image.astype(np.uint16)
         cv2.imwrite(normalised_image_name, normalised_image)
 
-    def normalise_images(self, folder_name, max_possible_intensity=65535):
+    def normalise_images(self, folder_name, max_possible_intensity=65535.0):
         """ Normalise a set of images to the bounds of the full set
 
         :param folder_name: name of the folder to be normalised
@@ -170,51 +169,62 @@ class PreProcess:
         """
         normalised_folder_name = folder_name + '_normalised'
 
-        # check if the folder exists
-        if os.path.exists(normalised_folder_name):
-            print("Folder exists, have you already done this normalisation??")
-            exit()
-        else:
-            print("Making dir "+str(normalised_folder_name)+" for normalisation")
+        try:
+            print("Making dir " + str(normalised_folder_name) + " for normalisation")
             os.mkdir(normalised_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this normalisation??")
+            return
 
         minimum_intensity, maximum_intensity = self.get_min_max_values(folder_name)
-        intensity_scaling_factor = float(max_possible_intensity) / float(maximum_intensity - minimum_intensity)
+        intensity_scaling_factor = max_possible_intensity / float(maximum_intensity - minimum_intensity)
+        print("Factor = " + str(intensity_scaling_factor))
 
-        print("Writing to folder +" + str(normalised_folder_name))
+        print("Writing to folder: " + str(normalised_folder_name))
         photo_list = self.get_photo_list(folder_name, '*.png')
         for i, name in enumerate(photo_list):
             file_name = folder_name + '/' + name
             normalised_image_name = normalised_folder_name + '/' + name
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
-            subtracted_image = np.subtract(image, np.full(np.shape(image), minimum_intensity))
-            scaled_image = (subtracted_image * intensity_scaling_factor)
-            normalised_image = scaled_image.astype(np.uint16)
-            cv2.imwrite(normalised_image_name, normalised_image)
+            subtracted_image = np.maximum(np.subtract(image.astype(np.int32), np.full(np.shape(image),
+                                                      minimum_intensity.astype(np.int32))),
+                                          np.zeros(np.shape(image)))
 
-    def get_min_max_values(self, folder_name):
+            normalised_image = (subtracted_image * intensity_scaling_factor)
+            cv2.imwrite(normalised_image_name, normalised_image.astype(np.uint16))
+
+    def get_min_max_values(self, folder_name, non_zero=True):
         """get minimum and maximum pixel intensities for a folder
 
         :param folder_name: the folder in which to find the minimum and maximum
+        :type folder_name: str
+        :param non_zero: if true, the method will return minimum non-zero pixel, useful for masked images
+        :type non_zero: bool
         :return:  minimum and maximum pixel intensity values for the folder
         :rtype int, int
         """
-        minimim_pixel_values = []
+        minimum_pixel_values = []
         maximum_pixel_values = []
         print("Getting min/max vals in folder " + str(folder_name))
         photo_list = self.get_photo_list(folder_name)
         for i, name in enumerate(photo_list):
             file_name = folder_name + '/' + name
-            image = cv2.imread(file_name, cv2.IMREAD_UNCHANGED)
+            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+            if non_zero:
+                image = image.ravel()
+                image.sort()
+                non_zero_pixels = image[np.nonzero(image)]
+                minimum_pixel_values.append(non_zero_pixels[0])
 
-            minimim_pixel_values.append(np.amin(image))
+            else:
+                minimum_pixel_values.append(np.amin(image))
+
             maximum_pixel_values.append(np.amax(image))
 
-        folder_minimum_pixel_value = np.amin(minimim_pixel_values)
-        folder_maximum_pixel_value = np.amin(maximum_pixel_values)
+        folder_minimum_pixel_value = np.amin(minimum_pixel_values)
+        folder_maximum_pixel_value = np.amax(maximum_pixel_values)
 
-        print("This min is: " + str(folder_minimum_pixel_value) + "  This max is: " + str(folder_maximum_pixel_value))
-
+        print("The min is: " + str(folder_minimum_pixel_value) + "  The max is: " + str(folder_maximum_pixel_value))
         return folder_minimum_pixel_value, folder_maximum_pixel_value
 
     def normalise_per_image(self, folder_name):
@@ -225,13 +235,12 @@ class PreProcess:
         """
         normalised_folder_name = folder_name + '_normalisedPerImage'
 
-        # check if the folder exists
-        if os.path.exists(normalised_folder_name):
-            print("Folder exists, have you already done this normalisation??")
-            exit()
-        else:
-            print("Making dir "+str(normalised_folder_name)+" for normalisation")
+        try:
+            print("Making dir " + str(normalised_folder_name) + " for normalisation")
             os.mkdir(normalised_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this normalisation??")
+            return
 
         print("Writing to folder +" + str(normalised_folder_name))
         photo_list = self.get_photo_list(folder_name)
@@ -241,6 +250,7 @@ class PreProcess:
 
     def mask_images(self, folder_name, mask_image_name):
         """ Masks images. Needs mask where background = 0. Writes to new folder.
+            This method is very slow, but had trouble using opencv bitwise AND
 
         :param folder_name: folder to be masked
         :param mask_image_name: full path to mask image
@@ -251,13 +261,12 @@ class PreProcess:
         photo_list = self.get_photo_list(folder_name)
         masked_folder_name = folder_name + '_masked'
 
-        # check if the folder exists
-        if os.path.exists(masked_folder_name):
-            print("Folder exists, have you already done this masking??")
-            exit()
-        else:
+        try:
             print("Making dir " + str(masked_folder_name) + " for masking")
             os.mkdir(masked_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this masking??")
+            return
 
         full_mask_image = cv2.imread(mask_image_name, cv2.IMREAD_ANYDEPTH)
 
@@ -336,13 +345,12 @@ class PreProcess:
         """
         colourised_folder_name = folder_name + '_colourised'
 
-        # check if the folder exists
-        if os.path.exists(colourised_folder_name):
-            print("Folder exists, have you already done this colourisation??")
-            exit()
-        else:
-            print("Making dir "+str(colourised_folder_name)+" for colourisation")
+        try:
+            print("Making dir " + str(colourised_folder_name) + " for colourisation")
             os.mkdir(colourised_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this colourisation??")
+            return
 
         print("Writing to folder +" + str(colourised_folder_name))
         photo_list = self.get_photo_list(folder_name)
