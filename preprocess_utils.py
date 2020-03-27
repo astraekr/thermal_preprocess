@@ -373,5 +373,47 @@ class PreProcess:
         for i in range(0, len(photo_list), sample_step):
             copyfile(source_folder_name + '/' + photo_list[i], destination_folder_name + '/' + photo_list[i])
 
+    def unmask_images(self, folder_name, background_image_name, mask_image_name):
+        """For presentation. Uses background imagery from a full image rather than a flat black mask.
+
+        :param folder_name: path to folder to be unmasked
+        :param background_image_name: path to image to be used as constant background for full image set
+        :param mask_image_name: path to the image originally used to mask the dataset
+        :type folder_name: str
+        :type background_image_name: str
+        :type mask_image_name: str
+        """
+        # TODO add functionality to unmask the correct background for each image
+
+        photo_list = self.get_photo_list(folder_name)
+        unmasked_folder_name = folder_name + '_unmasked'
+
+        try:
+            print("Making dir " + str(unmasked_folder_name) + " for unmasking")
+            os.mkdir(unmasked_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this unmasking??")
+            return
+
+        full_unmask_image = cv2.imread(background_image_name, cv2.IMREAD_ANYDEPTH)
+        full_mask_image = cv2.imread(mask_image_name, cv2.IMREAD_ANYDEPTH)
+
+        for i, image_name in enumerate(photo_list):
+            print("0," + str(i))
+            print (folder_name + '/' + image_name)
+            img = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
+            unmasked_image = img
+
+            size = img.shape
+            for rowPixel in range(0, size[0]):
+                for columnPixel in range(0, size[1]):
+                    if full_mask_image[rowPixel, columnPixel] != 0:
+                        unmasked_image[rowPixel, columnPixel] = img[rowPixel, columnPixel]
+
+                    elif full_mask_image[rowPixel, columnPixel] == 0:
+                        unmasked_image[rowPixel, columnPixel] = full_unmask_image[rowPixel, columnPixel]
+
+            cv2.imwrite(unmasked_folder_name + '/' + image_name, unmasked_image.astype(np.uint16))
+
     def test(self):
         print("A test github pycharm commit method")
