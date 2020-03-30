@@ -74,6 +74,7 @@ class PreProcess:
             return
 
         # get photo sizes
+        print(self.parent_folder + '/' + self.folder_list[0] + '/' + photo_list[0])
         size_photo = cv2.imread(self.parent_folder + '/' + self.folder_list[0] +
                                 '/' + photo_list[0], cv2.IMREAD_ANYDEPTH)
         photo_height, photo_width = np.shape(size_photo)
@@ -118,7 +119,6 @@ class PreProcess:
             return
 
         for i, name in enumerate(photo_list):
-            print(name)
             file_name = folder_name + '/' + name
             destination_filename = destination_folder + '/' + name[:-4] + '.png'
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
