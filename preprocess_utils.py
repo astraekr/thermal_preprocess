@@ -2,8 +2,11 @@ import os
 import glob
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
 from shutil import copyfile
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 
 
 class PreProcess:
@@ -304,7 +307,6 @@ class PreProcess:
     @staticmethod
     def get_histogram(folder_name, image_name, save_location):
         """Uses pyplot hist method to get and save the histogram for an image
-
         :param folder_name: folder image is contained in
         :param image_name: image to histogram of
         :param save_location: where to save the histogram to
@@ -316,7 +318,32 @@ class PreProcess:
         image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
         plt.hist(image.ravel(), 256, [0, 65535])
         plt.savefig(save_location + 'histogram.eps', format='eps')
-        plt.show()
+        # plt.show()
+
+    def get_histograms(self, folder_name):
+        """A more automated version of the above method, for mass histogram generation
+
+        :param folder_name: folder image is contained in
+        :type folder_name: str
+
+        """
+        histograms_folder_name = folder_name + '_histograms'
+
+        try:
+            print("Making dir " + str(histograms_folder_name) + " for histograms")
+            os.mkdir(histograms_folder_name)
+        except OSError:
+            print("Folder exists, have you already created these/this??")
+            return
+
+        print("Writing to folder: " + str(histograms_folder_name))
+        photo_list = self.get_photo_list(folder_name, '*.png')
+        for name in photo_list:
+            image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            plt.hist(image.ravel(), 256, [0, 65535])
+            plt.savefig(histograms_folder_name + '/' + name + 'histogram.eps', format='eps')
+            plt.clf()
+            # plt.show()
 
     @staticmethod
     def create_binary_masks(image_path):
@@ -414,6 +441,24 @@ class PreProcess:
                         unmasked_image[rowPixel, columnPixel] = full_unmask_image[rowPixel, columnPixel]
 
             cv2.imwrite(unmasked_folder_name + '/' + image_name, unmasked_image.astype(np.uint16))
+
+    def save_imageset_histogram(self, folder_name, save_location):
+        """ This doesn't work for data-sets like the one I'm using
+
+        :param folder_name:
+        :param save_location:
+        :type folder_name: str
+        :type save_location: str
+        """
+        all_images = []
+        photo_list = self.get_photo_list(folder_name)
+        for name in photo_list:
+            image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            all_images.append(image.ravel())
+
+        plt.hist(all_images, 256, [0, 65535])
+        plt.savefig(save_location + 'histogram.eps', format='eps')
+        # plt.show()
 
     def test(self):
         print("A test github pycharm commit method")
