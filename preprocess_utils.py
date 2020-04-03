@@ -3,10 +3,10 @@ import glob
 import numpy as np
 import cv2
 from shutil import copyfile
+import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
 
 
 class PreProcess:
@@ -459,6 +459,37 @@ class PreProcess:
         plt.hist(all_images, 256, [0, 65535])
         plt.savefig(save_location + 'histogram.eps', format='eps')
         # plt.show()
+
+    def plot_pixel_timeseries(self, folder_name, (x_index, y_index)):
+        """Gets series of pixel intensities and plots it then saves it
+
+        :param folder_name: folder to extract series from
+        :param (x_index, y_index) index of the pixel to plot
+        :type folder_name str
+        :type (x_index, y_index) tuple of ints
+        :return:
+        """
+        ts = self.retrieve_pixel_timeseries(folder_name, (x_index, y_index))
+        fig, ax = plt.subplots()
+        ax.plot(ts, label='('+str(x_index)+','+str(y_index)+')')
+        ax.legend()
+        fig.savefig(self.parent_folder + 'analysis/timeseries__'+str(x_index)+'_'+str(y_index)+'.png')
+        fig.clf()
+
+    def retrieve_pixel_timeseries(self, folder_name, (x_index, y_index)):
+        # TODO change this to 'get'
+        # TODO write docstring
+        intensities = []
+        photo_list = self.get_photo_list(folder_name)
+        for image_name in photo_list:
+            image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
+            intensities.append(image[x_index, y_index])
+
+        df = pd.DataFrame(intensities)
+        print intensities
+        return intensities
+        filename = folder_name + '_' + str(x_index) + '_' + str(y_index) + '.csv'
+        df.to_csv(filename, index=False)
 
     def test(self):
         print("A test github pycharm commit method")
