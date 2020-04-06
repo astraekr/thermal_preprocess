@@ -491,5 +491,43 @@ class PreProcess:
         filename = folder_name + '_' + str(x_index) + '_' + str(y_index) + '.csv'
         df.to_csv(filename, index=False)
 
+    def plot_intensity_lines(self, folder_name, columns, froms, tos):
+        """The nice embarrassing thing about using github is when you start resorting to code like this
+
+        :param folder_name:
+        :param columns:
+        :param froms:
+        :param tos:
+        :return:
+        """
+        photo_list = self.get_photo_list(folder_name)
+        for name in photo_list:
+            image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            line1 = image[froms[0]:tos[0], columns[0]]
+            line2 = image[froms[1]:tos[1], columns[1]]
+            line3 = image[froms[2]:tos[2], columns[2]]
+            line4 = image[froms[3]:tos[3], columns[3]]
+            line5 = image[froms[4]:tos[4], columns[4]]
+            line6 = image[froms[5]:tos[5], columns[5]]
+            line7 = image[froms[6]:tos[6], columns[6]]
+            line8 = image[froms[7]:tos[7], columns[7]]
+            fig, (ax1, ax2) = plt.subplots(ncols=2)
+            ax1.plot(line1, label='one')
+            ax1.plot(line2, label='two')
+            ax1.plot(line3, label='three')
+            ax1.plot(line4, label='four')
+            ax2.plot(line5, label='five')
+            ax2.plot(line6, label='six')
+            ax2.plot(line7, label='seven')
+            ax2.plot(line8, label='eight')
+            ax1.set_ylim(7000, 20000)
+            ax2.set_ylim(7000, 20000)
+            ax1.legend()
+            ax2.legend()
+            fig.set_figwidth(20)
+            fig.savefig(self.parent_folder + 'analysis/lines_timeseries/'+str(name)+ 'intensitylineplots.png')
+            fig.clf()
+            plt.close(fig)
+
     def test(self):
         print("A test github pycharm commit method")
