@@ -473,7 +473,9 @@ class PreProcess:
         fig, ax = plt.subplots()
         ax.plot(ts, label='('+str(x_index)+','+str(y_index)+')')
         ax.legend()
+        fig.set_figwidth(40)
         fig.savefig(self.parent_folder + 'analysis/timeseries__'+str(x_index)+'_'+str(y_index)+'.png')
+        fig.savefig(self.parent_folder + 'analysis/timeseries__' + str(x_index) + '_' + str(y_index) + '.svg')
         fig.clf()
 
     def retrieve_pixel_timeseries(self, folder_name, (x_index, y_index)):
@@ -525,9 +527,42 @@ class PreProcess:
             ax1.legend()
             ax2.legend()
             fig.set_figwidth(20)
-            fig.savefig(self.parent_folder + 'analysis/lines_timeseries/'+str(name)+ 'intensitylineplots.png')
+            fig.savefig(self.parent_folder + 'analysis/lines_timeseries/' + str(name) + 'intensitylineplots.png')
             fig.clf()
             plt.close(fig)
+
+    def get_image_gradient(self, folder_name, output_folder):
+        photo_list = self.get_photo_list(folder_name[0])
+        image = cv2.imread(folder_name[0] + photo_list[0], cv2.IMREAD_ANYDEPTH)
+        derivative = np.gradient(image)
+        d1 = derivative[0]
+        d2 = derivative[1]
+        print derivative
+        print np.shape(d1)
+        print np.shape(d2)
+        print output_folder + photo_list[0][:-4] + 'd1.png'
+        cv2.imwrite(output_folder + photo_list[0][:-4] + 'd1.png', d1)
+        cv2.imwrite(output_folder + photo_list[0][:-4] + 'd2.png', d2)
+
+    def plot_fft_pixel_timeseries(self, folder_name, (x_index, y_index)):
+        ts = self.retrieve_pixel_timeseries(folder_name, (x_index, y_index))
+        n = len(ts)
+        d = 60.0      # samples are approx once per minute
+        fig, ax = plt.subplots()
+        sample_freqs = np.fft.rfftfreq(n, d)
+        fourier = np.fft.rfft(ts)
+
+        ax.plot(sample_freqs[1:], fourier.real[1:(len(ts)/2)+1], label='real')
+        #ax.plot(fourier.imag[2:(len(ts)/2)], label='imag')
+        print fourier.real[1:]
+        #print fourier.imag[2:]
+        ax.legend()
+        fig.set_figwidth(30)
+        fig.savefig(
+            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.png')
+        fig.savefig(
+            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.svg')
+        fig.clf()
 
     def test(self):
         print("A test github pycharm commit method")
