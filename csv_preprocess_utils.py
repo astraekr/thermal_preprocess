@@ -1,9 +1,12 @@
 import datetime
 import pandas as pd
 import sklearn.preprocessing as skpp
-import matplotlib.pyplot as plt
 import re
+import numpy as np
 from pandas import concat
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 
 non_decimal = re.compile(r'[^\d.]+')
@@ -17,9 +20,7 @@ class CsvPreprocess():
     def __init__(self, working_dir, csv_filename):
         self.parent_folder = working_dir
         self.csv_file = csv_filename
-        self.folder_list = self.get_list_of_folders('*rotated90')
-
-        csv_dataframe = pd.read_csv(self.csv_file, parse_dates=True, header=0, index_col=0, date_parser=parser)
+        self.csv_dataframe = pd.read_csv(self.csv_file, parse_dates=True, header=0, index_col=0, date_parser=parser)
 
 
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
@@ -53,12 +54,12 @@ class CsvPreprocess():
             agg.dropna(inplace=True)
         return agg
 
-    def removeText(textDataset):
-        #Takes pandas dataframe as an argument
-        #Remove all text from the dataset
-        #returns a matrix of the values - not a dataframe
-        numDataset = textDataset.values
-        for col in range(0, len(textDataset.columns) - 1):
+    def remove_text(self, text_dataset):
+        # Takes Pandas DataFrame as an argument
+        # Remove all text from the dataset
+        # returns a matrix of the values - not a dataframe
+        numDataset = text_dataset.values
+        for col in range(0, len(text_dataset.columns) - 1):
             # inn[index,col] = ([re.sub(non_decimal, "", elem) for index, elem in enumerate(inn[:,col])])
             # https://stackoverflow.com/questions/12116717/does-pythons-re-sub-take-an-array-as-the-input-parameter
             for index, elem in enumerate(numDataset[:, col]):
@@ -68,32 +69,40 @@ class CsvPreprocess():
 
         return numDataset
 
-    def plot_fft_column_timeseries(self):
-        """
+    def plot_fft_column_timeseries(self, column_index, column_name, plot_name):
+        """Gets and plots fft of a column (single variable) of the csv dataset
 
+
+        :param column_index: index of the column to be analysed
+        :param column_name: name of the column to be analysed
+        :param plot_name: what the final plot should be saved as
+        :type column_index int
+        :type column_name str
+        :type plot_name str
         :return:
         """
-        #TODO finish this
+        dataset = self.csv_dataframe
 
+        dataset.index.name = 'datetime'
+        dataset.columns = ['dn', 'dm', 'dx', 'sn', 'sm', 'sx', 'ta', 'ua', 'pa', 'fan', 'current', 'voltage']
+        data_points_numerical = self.remove_text(dataset)
+        values = data_points_numerical.astype('float32')
 
-        ts = self.retrieve_pixel_timeseries(folder_name, (x_index, y_index))
-        n = len(ts)
-        d = 60.0  # samples are approx once per minute
+        ts = values[:, column_index]
+        n = len(values[:, column_index])
+        d = 60.0  # samples are approx once per minute #TODO sure this up
         fig, ax = plt.subplots()
         sample_freqs = np.fft.rfftfreq(n, d)
         fourier = np.fft.rfft(ts)
-
-        ax.plot(sample_freqs[1:], fourier.real[1:(len(ts) / 2) + 1], label='real')
-        # ax.plot(fourier.imag[2:(len(ts)/2)], label='imag')
-        print fourier.real[1:]
-        # print fourier.imag[2:]
+        ax.plot(sample_freqs[1:], fourier.real[1:(len(ts) / 2) + 1], label='real, ' + column_name)
+        ax.plot(sample_freqs[1:], fourier.imag[1:(len(ts) / 2) + 1], label='imag, ' + column_name)
         ax.legend()
-        fig.set_figwidth(30)
         fig.savefig(
-            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.png')
+            self.parent_folder + 'analysis/'+plot_name+'.png')
         fig.savefig(
-            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.svg')
+            self.parent_folder + 'analysis/'+plot_name+'.svg')
         fig.clf()
+
 
     def normalise_and_plot(self):
         #columns

@@ -4,9 +4,11 @@ import numpy as np
 import cv2
 from shutil import copyfile
 import pandas as pd
+import datetime
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import matplotlib.dates as dates
 
 
 class PreProcess:
@@ -56,7 +58,7 @@ class PreProcess:
         photo_list.sort()
         return photo_list
 
-    def stitch_images(self, photo_list):
+    def stitch_images(self):
         """Stitches images from 8 folders into a 4*2 grid
 
         :param photo_list:
@@ -76,6 +78,7 @@ class PreProcess:
             print("Folder exists, have you already done this stitching??")
             return
 
+        photo_list = self.get_photo_list(self.parent_folder + '/' + self.folder_list[0])
         # get photo sizes
         print(self.parent_folder + '/' + self.folder_list[0] + '/' + photo_list[0])
         size_photo = cv2.imread(self.parent_folder + '/' + self.folder_list[0] +
@@ -165,7 +168,8 @@ class PreProcess:
     def normalise_images(self, folder_name, max_possible_intensity=65535.0):
         """ Normalise a set of images to the bounds of the full set
 
-        :param folder_name: name of the folder to be normalised
+
+        :param folder_name: full path name of the folder to be normalised
         :param max_possible_intensity: the maximum intensity for the output image
         :type folder_name: str
         :type max_possible_intensity: int
@@ -274,19 +278,19 @@ class PreProcess:
         full_mask_image = cv2.imread(mask_image_name, cv2.IMREAD_ANYDEPTH)
 
         for i, image_name in enumerate(photo_list):
-            print("0," + str(i))
-            print (folder_name + '/' + image_name)
+            print(i)
+            print (folder_name + image_name)
             img = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
             masked_image = img
 
             size = img.shape
-            for rowPixel in range(0, size[0]):
-                for columnPixel in range(0, size[1]):
-                    if full_mask_image[rowPixel, columnPixel] != 0:
-                        masked_image[rowPixel, columnPixel] = img[rowPixel, columnPixel]
+            for row_pixel in range(0, size[0]):
+                for column_pixel in range(0, size[1]):
+                    if full_mask_image[row_pixel, column_pixel] != 0:
+                        masked_image[row_pixel, column_pixel] = img[row_pixel, column_pixel]
 
                     else:
-                        masked_image[rowPixel, columnPixel] = 0
+                        masked_image[row_pixel, column_pixel] = 0
 
             cv2.imwrite(masked_folder_name + '/' + image_name, masked_image.astype(np.uint16))
 
@@ -469,18 +473,22 @@ class PreProcess:
         :type (x_index, y_index) tuple of ints
         :return:
         """
-        ts = self.retrieve_pixel_timeseries(folder_name, (x_index, y_index))
+        ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
+        indices = self.get_indices_from_filenames(folder_name)
+        index_dates = dates.date2num(indices)
+        print indices
+        print index_dates
         fig, ax = plt.subplots()
-        ax.plot(ts, label='('+str(x_index)+','+str(y_index)+')')
+        #ax.plot_date(dates.num2date(indices), ts, xdate=True)
+        ax.plot_date(index_dates, ts, xdate=True)
+        #ax.plot(ts, label='('+str(x_index)+','+str(y_index)+')')
         ax.legend()
         fig.set_figwidth(40)
-        fig.savefig(self.parent_folder + 'analysis/timeseries__'+str(x_index)+'_'+str(y_index)+'.png')
-        fig.savefig(self.parent_folder + 'analysis/timeseries__' + str(x_index) + '_' + str(y_index) + '.svg')
+        fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_'+str(x_index)+'_'+str(y_index)+'.png')
+        fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.svg')
         fig.clf()
 
-    def retrieve_pixel_timeseries(self, folder_name, (x_index, y_index)):
-        # TODO change this to 'get'
-        # TODO write docstring
+    def get_pixel_timeseries(self, folder_name, (x_index, y_index)):
         intensities = []
         photo_list = self.get_photo_list(folder_name)
         for image_name in photo_list:
@@ -488,21 +496,22 @@ class PreProcess:
             intensities.append(image[x_index, y_index])
 
         df = pd.DataFrame(intensities)
-        print intensities
         return intensities
         filename = folder_name + '_' + str(x_index) + '_' + str(y_index) + '.csv'
         df.to_csv(filename, index=False)
 
-    def plot_intensity_lines(self, folder_name, columns, froms, tos):
+    def plot_intensity_lines(self, folder_name, columns, froms, tos, destination):
         """The nice embarrassing thing about using github is when you start resorting to code like this
 
         :param folder_name:
         :param columns:
         :param froms:
         :param tos:
+        :param destination: path from self.parent_folder, where output graphs to be stored
         :return:
         """
         photo_list = self.get_photo_list(folder_name)
+        minimum, maximum = self.get_min_max_values(folder_name)
         for name in photo_list:
             image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
             line1 = image[froms[0]:tos[0], columns[0]]
@@ -522,12 +531,12 @@ class PreProcess:
             ax2.plot(line6, label='six')
             ax2.plot(line7, label='seven')
             ax2.plot(line8, label='eight')
-            ax1.set_ylim(7000, 20000)
-            ax2.set_ylim(7000, 20000)
+            ax1.set_ylim(minimum - (0.1 * minimum), maximum + (0.1 * maximum))
+            ax2.set_ylim(minimum - (0.1 * minimum), maximum + (0.1 * maximum))
             ax1.legend()
             ax2.legend()
             fig.set_figwidth(20)
-            fig.savefig(self.parent_folder + 'analysis/lines_timeseries/' + str(name) + 'intensitylineplots.png')
+            fig.savefig(self.parent_folder + destination + '/' + str(name) + 'intensitylineplots.png')
             fig.clf()
             plt.close(fig)
 
@@ -545,7 +554,7 @@ class PreProcess:
         cv2.imwrite(output_folder + photo_list[0][:-4] + 'd2.png', d2)
 
     def plot_fft_pixel_timeseries(self, folder_name, (x_index, y_index)):
-        ts = self.retrieve_pixel_timeseries(folder_name, (x_index, y_index))
+        ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
         n = len(ts)
         d = 60.0      # samples are approx once per minute
         fig, ax = plt.subplots()
@@ -563,6 +572,14 @@ class PreProcess:
         fig.savefig(
             self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.svg')
         fig.clf()
+
+    def get_indices_from_filenames(self, folder_name):
+        indices = []
+        photo_list = self.get_photo_list(folder_name)
+        for name in photo_list:
+            indices.append(datetime.datetime.strptime(name[:-4], '%Y-%m-%d %H:%M:%S'))
+
+        return indices
 
     def test(self):
         print("A test github pycharm commit method")
