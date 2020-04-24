@@ -30,6 +30,8 @@ class PreProcess:
     def __init__(self, working_dir):
         self.parent_folder = working_dir
         self.folder_list = self.get_list_of_folders('*rotated90')
+        #TODO add photo_list to this - is basically used everywhere
+        #TODO add photo sizes to this
 
     def get_list_of_folders(self, end_of_folder_name):
         """Looks in the top directory and returns a list of folders
@@ -470,23 +472,41 @@ class PreProcess:
         :param folder_name: folder to extract series from
         :param (x_index, y_index) index of the pixel to plot
         :type folder_name str
-        :type (x_index, y_index) tuple of ints
+        :type (x_index, y_index) tuple of ints, or tuple of lists of ints
         :return:
         """
-        ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
-        indices = self.get_indices_from_filenames(folder_name)
-        index_dates = dates.date2num(indices)
-        print indices
-        print index_dates
-        fig, ax = plt.subplots()
-        #ax.plot_date(dates.num2date(indices), ts, xdate=True)
-        ax.plot_date(index_dates, ts, xdate=True)
-        #ax.plot(ts, label='('+str(x_index)+','+str(y_index)+')')
-        ax.legend()
-        fig.set_figwidth(40)
-        fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_'+str(x_index)+'_'+str(y_index)+'.png')
-        fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.svg')
-        fig.clf()
+        # single pixel to plot
+        if type(x_index) == int:
+            print('Plotting ' + str(x_index) + ' , ' + str(y_index))
+            ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
+            indices = self.get_indices_from_filenames(folder_name)
+            index_dates = dates.date2num(indices)
+            fig, ax = plt.subplots()
+            ax.plot_date(index_dates, ts, xdate=True, label=str(x_index) + ' , ' + str(y_index))
+            ax.legend()
+            fig.set_figwidth(40)
+            fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.png')
+            fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.svg')
+            fig.clf()
+
+        # multiple pixels to plot
+        else:
+            fig, ax = plt.subplots()
+            for i in range(0, len(x_index)):
+                print('Plotting ' + str(x_index[i]) + ' , ' + str(y_index[i]))
+                ts = self.get_pixel_timeseries(folder_name, (x_index[i], y_index[i]))
+                indices = self.get_indices_from_filenames(folder_name)
+                index_dates = dates.date2num(indices)
+
+                ax.plot_date(index_dates, ts, xdate=True, label=str(x_index[i]) + ' , ' + str(y_index[i]))
+
+            ax.legend()
+            fig.set_figwidth(40)
+            fig.savefig(
+                self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.png')
+            fig.savefig(
+                self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.svg')
+            fig.clf()
 
     def get_pixel_timeseries(self, folder_name, (x_index, y_index)):
         intensities = []
@@ -510,8 +530,11 @@ class PreProcess:
         :param destination: path from self.parent_folder, where output graphs to be stored
         :return:
         """
+        #TODO improve the getmin max to only get the min and max in the columns - how without 2 long for loops?
         photo_list = self.get_photo_list(folder_name)
-        minimum, maximum = self.get_min_max_values(folder_name)
+        minimum, maximum = self.get_min_max_intensity_lines(folder_name, columns, froms, tos, non_zero=True)
+        print("Will set minimum y to " + str(minimum - (0.1 * minimum)) +
+              " (min - (0.1 * min)) and maximum y to " + str(maximum - (0.1 * maximum)))
         for name in photo_list:
             image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
             line1 = image[froms[0]:tos[0], columns[0]]
@@ -539,6 +562,93 @@ class PreProcess:
             fig.savefig(self.parent_folder + destination + '/' + str(name) + 'intensitylineplots.png')
             fig.clf()
             plt.close(fig)
+
+    def get_min_max_intensity_lines(self, folder_name, columns, froms, tos, non_zero=True):
+
+        minimum_pixel_values = []
+        maximum_pixel_values = []
+        photo_list = self.get_photo_list(folder_name)
+
+        for i, name in enumerate(photo_list):
+            pixels = []
+            file_name = folder_name + '/' + name
+            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+            pixels.extend(image[froms[0]:tos[0], columns[0]])
+            pixels.extend(image[froms[1]:tos[1], columns[1]])
+            pixels.extend(image[froms[2]:tos[2], columns[2]])
+            pixels.extend(image[froms[3]:tos[3], columns[3]])
+            pixels.extend(image[froms[4]:tos[4], columns[4]])
+            pixels.extend(image[froms[5]:tos[5], columns[5]])
+            pixels.extend(image[froms[6]:tos[6], columns[6]])
+
+            if non_zero:
+                list_pixels = []
+                pixels.sort()
+                # nonz_indices = np.nonzero(pixels)[0]
+                # print nonz_indices
+                # print type(nonz_indices)
+                # list_pixels.append(nonz_indices)
+
+                # need to make the 'pixels' variable into a np.ndarray i think
+                new_pixels = np.full((len(pixels), 1), 1)
+                #print type(new_pixels)
+                for k, j in enumerate(pixels):
+                    new_pixels[k, :] = j
+
+                # this is a really fiddly and stupid way to get around how bad this is implemented for lists
+                non_zero_pixels = new_pixels[np.nonzero(new_pixels)]
+                #print non_zero_pixels
+                #non_zero_pixels = pixels[list_pixels]
+                #print non_zero_pixels
+                #non_zero_pixels = pixels[indices]
+                minimum_pixel_values.append(non_zero_pixels[0])
+
+            else:
+                minimum_pixel_values.append(np.amin(pixels))
+
+            maximum_pixel_values.append(np.amax(pixels))
+
+        folder_minimum_pixel_value = np.amin(minimum_pixel_values)
+        folder_maximum_pixel_value = np.amax(maximum_pixel_values)
+
+        print("The min is: " + str(folder_minimum_pixel_value) + "  The max is: " + str(folder_maximum_pixel_value))
+        return folder_minimum_pixel_value, folder_maximum_pixel_value
+
+
+
+    def create_empty_imageset(self):
+        return
+
+    def convert_8bit_to_16bit(self, folder_name):
+        sixteen_bit_folder_name = folder_name + '_16b'
+
+        try:
+            print("Making dir " + str(sixteen_bit_folder_name) + " for masking")
+            os.mkdir(sixteen_bit_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this masking??")
+            return
+
+        photo_list = self.get_photo_list(folder_name)
+        size_photo = cv2.imread(self.parent_folder + '/' + self.folder_list[0] +
+                                '/' + photo_list[0], cv2.IMREAD_ANYDEPTH)
+        photo_height, photo_width = np.shape(size_photo)
+
+        for image_name in photo_list:
+            print (folder_name + '/' + image_name)
+            img = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
+            scale = np.full([photo_height, photo_width], 256)
+
+            sixteen_bit_image = np.multiply(img, scale)
+            """
+            sixteen_bit_image = img
+            
+            size = img.shape
+            for row_pixel in range(0, size[0]):
+                for column_pixel in range(0, size[1]):
+                        sixteen_bit_image[row_pixel, column_pixel] = img[row_pixel, column_pixel] * 256
+            """
+            cv2.imwrite(sixteen_bit_folder_name + '/' + image_name, sixteen_bit_image.astype(np.uint16))
 
     def get_image_gradient(self, folder_name, output_folder):
         photo_list = self.get_photo_list(folder_name[0])
@@ -574,10 +684,12 @@ class PreProcess:
         fig.clf()
 
     def get_indices_from_filenames(self, folder_name):
+        #TODO some way of interpreting the date string and using that to define how to process it
         indices = []
         photo_list = self.get_photo_list(folder_name)
         for name in photo_list:
-            indices.append(datetime.datetime.strptime(name[:-4], '%Y-%m-%d %H:%M:%S'))
+            indices.append(datetime.datetime.strptime(name[:-4], '%Y-%m-%d %H:%M:%S.%f'))
+
 
         return indices
 

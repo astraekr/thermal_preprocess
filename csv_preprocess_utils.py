@@ -7,6 +7,7 @@ from pandas import concat
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import scipy.integrate as itgrt
 
 
 non_decimal = re.compile(r'[^\d.]+')
@@ -102,6 +103,26 @@ class CsvPreprocess():
         fig.savefig(
             self.parent_folder + 'analysis/'+plot_name+'.svg')
         fig.clf()
+
+    def get_column_integral(self, column_index=10):
+        """
+            default to current, it's the variable this was designed for
+        :param column_index:
+        :return:
+        """
+
+        dataframe = self.csv_dataframe
+        column = dataframe.values[:, column_index]
+        length_of_dataset = len(column)
+        for i in range(0, length_of_dataset):
+            integrals = []
+
+            #print column[0:i]
+            integral_this_interval = np.cumsum(column[0:i])
+
+            integrals.append(integral_this_interval)
+
+        print integrals
 
 
     def normalise_and_plot(self):
