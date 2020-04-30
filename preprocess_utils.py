@@ -5,6 +5,7 @@ import cv2
 from shutil import copyfile
 import pandas as pd
 import datetime
+import scipy.signal as sgnl
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -30,8 +31,8 @@ class PreProcess:
     def __init__(self, working_dir):
         self.parent_folder = working_dir
         self.folder_list = self.get_list_of_folders('*rotated90')
-        #TODO add photo_list to this - is basically used everywhere
-        #TODO add photo sizes to this
+        # TODO add photo_list to this - is basically used everywhere
+        # TODO add photo sizes to this
 
     def get_list_of_folders(self, end_of_folder_name):
         """Looks in the top directory and returns a list of folders
@@ -63,8 +64,6 @@ class PreProcess:
     def stitch_images(self):
         """Stitches images from 8 folders into a 4*2 grid
 
-        :param photo_list:
-        :type photo_list: list
         :return: name of the stitched folder
         :rtype: str
         """
@@ -475,6 +474,7 @@ class PreProcess:
         :type (x_index, y_index) tuple of ints, or tuple of lists of ints
         :return:
         """
+        # TODO, swap x and y axes in the parameters
         # single pixel to plot
         if type(x_index) == int:
             print('Plotting ' + str(x_index) + ' , ' + str(y_index))
@@ -482,8 +482,14 @@ class PreProcess:
             indices = self.get_indices_from_filenames(folder_name)
             index_dates = dates.date2num(indices)
             fig, ax = plt.subplots()
-            ax.plot_date(index_dates, ts, xdate=True, label=str(x_index) + ' , ' + str(y_index))
+            ax.plot_date(index_dates[500:600], ts[500:600], xdate=True, linestyle='solid', marker='None',
+                         label=str(x_index) + ' , ' + str(y_index))
             ax.legend()
+            ax.grid(b=True, which='major', color='#666666', linestyle='-')
+
+            # Show the minor grid lines with very faint and almost transparent grey lines
+            ax.minorticks_on()
+            ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
             fig.set_figwidth(40)
             fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.png')
             fig.savefig(self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.svg')
@@ -498,9 +504,15 @@ class PreProcess:
                 indices = self.get_indices_from_filenames(folder_name)
                 index_dates = dates.date2num(indices)
 
-                ax.plot_date(index_dates, ts, xdate=True, label=str(x_index[i]) + ' , ' + str(y_index[i]))
+                ax.plot_date(index_dates[500:600], ts[500:600], xdate=True, linestyle='solid', marker='None',
+                             label=str(x_index[i]) + ' , ' + str(y_index[i]))
 
             ax.legend()
+            ax.grid(b=True, which='major', color='#666666', linestyle='-')
+
+            # Show the minor grid lines with very faint and almost transparent grey lines
+            ax.minorticks_on()
+            ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
             fig.set_figwidth(40)
             fig.savefig(
                 self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.png')
@@ -515,10 +527,9 @@ class PreProcess:
             image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
             intensities.append(image[x_index, y_index])
 
-        df = pd.DataFrame(intensities)
+        # df = pd.DataFrame(intensities)
+        print intensities
         return intensities
-        filename = folder_name + '_' + str(x_index) + '_' + str(y_index) + '.csv'
-        df.to_csv(filename, index=False)
 
     def plot_intensity_lines(self, folder_name, columns, froms, tos, destination):
         """The nice embarrassing thing about using github is when you start resorting to code like this
@@ -530,7 +541,7 @@ class PreProcess:
         :param destination: path from self.parent_folder, where output graphs to be stored
         :return:
         """
-        #TODO improve the getmin max to only get the min and max in the columns - how without 2 long for loops?
+        # TODO improve the get min max to only get the min and max in the columns - how without 2 long for loops?
         photo_list = self.get_photo_list(folder_name)
         minimum, maximum = self.get_min_max_intensity_lines(folder_name, columns, froms, tos, non_zero=True)
         print("Will set minimum y to " + str(minimum - (0.1 * minimum)) +
@@ -582,25 +593,14 @@ class PreProcess:
             pixels.extend(image[froms[6]:tos[6], columns[6]])
 
             if non_zero:
-                list_pixels = []
                 pixels.sort()
-                # nonz_indices = np.nonzero(pixels)[0]
-                # print nonz_indices
-                # print type(nonz_indices)
-                # list_pixels.append(nonz_indices)
-
                 # need to make the 'pixels' variable into a np.ndarray i think
                 new_pixels = np.full((len(pixels), 1), 1)
-                #print type(new_pixels)
                 for k, j in enumerate(pixels):
                     new_pixels[k, :] = j
 
                 # this is a really fiddly and stupid way to get around how bad this is implemented for lists
                 non_zero_pixels = new_pixels[np.nonzero(new_pixels)]
-                #print non_zero_pixels
-                #non_zero_pixels = pixels[list_pixels]
-                #print non_zero_pixels
-                #non_zero_pixels = pixels[indices]
                 minimum_pixel_values.append(non_zero_pixels[0])
 
             else:
@@ -613,11 +613,6 @@ class PreProcess:
 
         print("The min is: " + str(folder_minimum_pixel_value) + "  The max is: " + str(folder_maximum_pixel_value))
         return folder_minimum_pixel_value, folder_maximum_pixel_value
-
-
-
-    def create_empty_imageset(self):
-        return
 
     def convert_8bit_to_16bit(self, folder_name):
         sixteen_bit_folder_name = folder_name + '_16b'
@@ -663,35 +658,170 @@ class PreProcess:
         cv2.imwrite(output_folder + photo_list[0][:-4] + 'd1.png', d1)
         cv2.imwrite(output_folder + photo_list[0][:-4] + 'd2.png', d2)
 
-    def plot_fft_pixel_timeseries(self, folder_name, (x_index, y_index)):
+    def get_plot_fft_pixel_timeseries(self, folder_name, (x_index, y_index), file_string):
+
         ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
-        n = len(ts)
-        d = 60.0      # samples are approx once per minute
+        self.plot_fft_pixel_timeseries(folder_name, ts, str(x_index)+ '_' + str(y_index) + file_string)
+
+    def plot_fft_pixel_timeseries(self, folder_name, time_series, file_string):
+        """ Plots spectrum of a pixel intensity time series
+
+        :param folder_name:
+        :param file_string: to be added to the file name
+        :return:
+        """
+        n = len(time_series)
+        frequency = self.get_sampling_frequency(folder_name)
+        d = 1.0 / frequency         # 'sample spacing'
         fig, ax = plt.subplots()
         sample_freqs = np.fft.rfftfreq(n, d)
-        fourier = np.fft.rfft(ts)
+        fourier = np.fft.rfft(time_series*np.hanning(len(time_series)))
 
-        ax.plot(sample_freqs[1:], fourier.real[1:(len(ts)/2)+1], label='real')
-        #ax.plot(fourier.imag[2:(len(ts)/2)], label='imag')
-        print fourier.real[1:]
-        #print fourier.imag[2:]
+        ax.plot(sample_freqs[1:], fourier.real[1:(len(time_series)/2)+1], label='real')
         ax.legend()
+        ax.minorticks_on()
+        ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+        ax.set_xlabel('Frequency: Hz')
+
         fig.set_figwidth(30)
         fig.savefig(
-            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.png')
+            self.parent_folder + 'analysis/timeseries_fourier_'
+            + file_string + '.png')
         fig.savefig(
-            self.parent_folder + 'analysis/timeseries_fourier_pluscomplex' + str(x_index) + '_' + str(y_index) + '.svg')
+            self.parent_folder + 'analysis/timeseries_fourier_'
+            + file_string + '.svg')
         fig.clf()
+
+
 
     def get_indices_from_filenames(self, folder_name):
         #TODO some way of interpreting the date string and using that to define how to process it
         indices = []
         photo_list = self.get_photo_list(folder_name)
         for name in photo_list:
-            indices.append(datetime.datetime.strptime(name[:-4], '%Y-%m-%d %H:%M:%S.%f'))
-
+            indices.append(datetime.datetime.strptime(name[:-4], '%Y-%m-%d %H:%M:%S'))
 
         return indices
+
+    def apply_bandpass_filter_timeseries(self, folder_name, (x_index, y_index), start_stop_freq, stop_stop_freq):
+        """Gets timeseries of a pixel, plots it, applies bandpass filter, plots it
+
+        :param folder_name:
+        :param (x_index, y_index)
+        :param start_stop_freq
+        :param stop_stop_freq
+        :return:
+        """
+        photo_list = self.get_photo_list(folder_name)
+
+        ts = self.get_pixel_timeseries(folder_name, (x_index, y_index))
+        self.plot_fft_pixel_timeseries(folder_name, ts, str(x_index) + '_' +  str(y_index) + 'pre_butterworth')
+        n = len(ts)
+        frequency = self.get_sampling_frequency(folder_name)
+        d = 1.0 / frequency         # 'sample spacing'
+        fig, ax = plt.subplots()
+        sample_freqs = np.fft.rfftfreq(n, d)
+        fourier = np.fft.rfft(ts)
+        print sample_freqs
+        nyquist = frequency / 2.0
+
+        start_stop_band = start_stop_freq / nyquist
+        stop_stop_band = stop_stop_freq / nyquist
+
+        print start_stop_band
+        print stop_stop_band
+
+        sos = sgnl.butter(2, Wn=[start_stop_band, stop_stop_band], btype='bandstop', output='sos')
+        filtered = sgnl.sosfilt(sos, ts)
+        self.plot_fft_pixel_timeseries(folder_name, filtered, str(x_index) + '_' + str(y_index) + 'post_butterworth')
+        fig, ax = plt.subplots()
+        indices = self.get_indices_from_filenames(folder_name)
+        index_dates = dates.date2num(indices)
+        ax.plot_date(index_dates, ts, xdate=True, linestyle='solid', marker='None',
+                     label=str(x_index) + ' , ' + str(y_index))
+        ax.plot_date(index_dates, filtered, xdate=True, linestyle='solid', marker='None',
+                     label=str(x_index) + ' , ' + str(y_index) + ' filtered')
+
+        ax.legend()
+        ax.grid(b=True, which='major', color='#666666', linestyle='-')
+
+        # Show the minor grid lines with very faint and almost transparent grey lines
+        ax.minorticks_on()
+        ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+        fig.set_figwidth(40)
+        fig.savefig(self.parent_folder + 'analysis/timeseries_filtered_' + str(x_index) + '_' + str(y_index) + '.png')
+        fig.savefig(self.parent_folder + 'analysis/timeseries_filtered_' + str(x_index) + '_' + str(y_index) + '.svg')
+        fig.clf()
+
+    def get_sampling_frequency(self, folder_name):
+        """
+
+        :param folder_name:
+        :return:
+        """
+        indices = self.get_indices_from_filenames(folder_name)
+        n = len(indices)
+        time_diff = (indices[-1] - indices[0]).total_seconds()
+        period = time_diff / n
+        frequency = 1.0 / period
+        return frequency
+
+
+    def set_sampling_frequency(self, folder_name):
+        """ oversamples then under samples the dataset to get data at a constant frequency
+
+        :param folder_name:
+        :return:
+        """
+        resampled_folder_name = folder_name + '_resampled'
+
+        try:
+            print("Making dir " + str(resampled_folder_name) + " for resampling")
+            os.mkdir(resampled_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this resampling??")
+            return
+
+        print("Writing to folder +" + str(resampled_folder_name))
+        photo_list = self.get_photo_list(folder_name)
+        indices = self.get_indices_from_filenames(folder_name)
+        rows = []
+        df = pd.DataFrame()
+        print df
+        for name in photo_list:
+            print name
+            file_name = folder_name + '/' + name
+            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+            ravelled_image = image.ravel()
+
+            rows.append(ravelled_image)
+            df.append([ravelled_image])
+
+
+        #df = pd.DataFrame(rows, columns = [i for i in range(0, len(ravelled_image))])
+        print df
+        #rows = []
+
+        #for i in range(3):
+        #    rows.append([i, i + 1])
+
+        #print(rows)
+        #df = pd.DataFrame(rows, columns=["A", "B"])
+
+        #print(df)
+
+
+        """
+
+        offset = None
+        x = data.resample('10S', loffset=offset).sum()  # works but the data is offset by 3 minutes
+        upsampledCsv = x.interpolate(method='time')
+
+        print upsampledCsv.head(50)
+        downsampledCsv = upsampledCsv.resample('10T').mean()
+        print downsampledCsv.head(50)
+        downsampledCsv.to_csv(csv[:-4] + '_10minbase.csv')
+        """
 
     def test(self):
         print("A test github pycharm commit method")
