@@ -31,8 +31,13 @@ class PreProcess:
     def __init__(self, working_dir):
         self.parent_folder = working_dir
         self.folder_list = self.get_list_of_folders('*rotated90')
+        self.full_folder_list = self.get_parent_subfolders()
         # TODO add photo_list to this - is basically used everywhere
         # TODO add photo sizes to this
+        print('Working in: ' + working_dir)
+        print('Folders are: ')
+        for i in range(0, len(self.full_folder_list)):
+            print(self.full_folder_list[i])
 
     def get_list_of_folders(self, end_of_folder_name):
         """Looks in the top directory and returns a list of folders
@@ -45,6 +50,13 @@ class PreProcess:
         folder_list = [os.path.basename(f) for f in glob.glob(os.path.join(self.parent_folder, end_of_folder_name))]
         folder_list.sort()
         return folder_list
+
+    def get_parent_subfolders(self):
+        """Prints all directories in the chosen 'working/parent dir', just because
+
+        :return: subfolders
+        """
+        return [x[0] for x in os.walk(self.parent_folder)]
 
     @staticmethod
     def get_photo_list(folder_name, extension='*.png'):
@@ -767,6 +779,78 @@ class PreProcess:
         frequency = 1.0 / period
         return frequency
 
+    def resample(self, folder_name):
+        # get images
+        # unravel images
+        # get indices for the columns
+        # save columns as .csv files (or groups of columns?)
+        # clear memory ??
+        # start looping through the columns (or groups of columns?)
+        #       resample
+        #       save as new .csv
+        # start looping through the new columns
+        #       save as new big .csv
+        # start looping through as chunks in big .csv
+        #       un-un-ravel rows back into 'images'
+        #       save 'images' as images
+        resampled_folder_name = folder_name + '_resampled'
+
+        try:
+            print("Making dir " + str(resampled_folder_name) + " for resampling")
+            os.mkdir(resampled_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this resampling??")
+            return
+
+        print("Writing to folder +" + str(resampled_folder_name))
+        source_folder_name = folder_name
+        photo_list = self.get_photo_list(folder_name)
+        indices = self.get_indices_from_filenames(folder_name)
+        size_photo = cv2.imread(folder_name + '/' + photo_list[0], cv2.IMREAD_ANYDEPTH)
+        photo_height, photo_width = np.shape(size_photo)
+        all_images = np.zeros((len(photo_list), photo_height * photo_width))
+
+        for i, name in enumerate(photo_list):
+            file_name = folder_name + '/' + name
+            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+            all_images[i, :] = image.ravel()
+
+        # save data in groups of columns (defined by block_size)
+        # in .npy files
+        for i in range(0, photo_height * photo_width, block_size = 8):
+            data_for_csv = all_images[:, i:(i + 7)]
+            np.save(self.parent_folder + "\\temp" + str(i), data_for_csv)
+            # D:\Laptop
+
+        for i in range(0, photo_height * photo_width, block_size = 8):
+            little_block = np.load(self.parent_folder + "\\temp" +str(i))
+            little_block_df = pd.DataFrame(little_block, index=indices)
+            offset = None
+            res = little_block_df.resample('1s', loffset=offset).asfreq()
+            upsampled = res.interpolate(method='time')
+            downsampled = upsampled.resample('1T').mean()  # likely need to change the resampling method here
+            # downsampled = upsampled.resample('70s').mean() # alt version with closer to average period
+            # at this stage could do a mean squared error calculation to see what sampling process gets the
+            # closest results?
+            downsampled_npy = downsampled.to_numpy()
+            np.save(self.parent_folder + "\\temp" +str(i) + 'downsampled', downsampled_npy)
+
+        resampled_indices = downsampled.index()
+
+        resampled_all_images = np.zeros(len(resampled_indices), photo_height * photo_width)
+        for i in range(0, photo_height * photo_width, block_size = 8):
+            resampled_all_images[:, i:(i + 7)] = np.load(self.parent_folder + "\\temp" + str(i))
+
+        resampled_dataset = pd.DataFrame(resampled_all_images, index=resampled_indices)
+        resampled_dataset.to_csv(self.parent_folder + "\\temp\\" + resampled.csv")
+
+        for i in range(0, len(resampled_indices)):
+            image = resampled_all_images[i,:]
+            cv2.imwrite(path + str(resampled_indices[i]), image)
+
+        
+
+
     def set_sampling_frequency(self, folder_name):
         """ oversamples then under samples the dataset to get data at a constant frequency
 
@@ -795,6 +879,8 @@ class PreProcess:
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
             all_images[i, :] = image.ravel()
 
+
+        # following code is the code from the old .csvs in the national grid data
         print('for loop done')
         df = pd.DataFrame(all_images, index=indices)
         print('dataframe made')
