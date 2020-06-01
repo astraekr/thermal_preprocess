@@ -34,6 +34,7 @@ class PreProcess:
         self.full_folder_list = self.get_parent_subfolders()
         # TODO add photo_list to this - is basically used everywhere
         # TODO add photo sizes to this
+        # TODO change the path handling to be platform-agnostic
         print('Working in: ' + working_dir)
         print('Folders are: ')
         for i in range(0, len(self.full_folder_list)):
@@ -793,6 +794,7 @@ class PreProcess:
         # start looping through as chunks in big .csv
         #       un-un-ravel rows back into 'images'
         #       save 'images' as images
+        block_size = 8
         resampled_folder_name = folder_name + '_resampled'
 
         try:
@@ -811,19 +813,22 @@ class PreProcess:
         all_images = np.zeros((len(photo_list), photo_height * photo_width))
 
         for i, name in enumerate(photo_list):
+            print("1, "+ str(i))
             file_name = folder_name + '/' + name
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
             all_images[i, :] = image.ravel()
 
         # save data in groups of columns (defined by block_size)
         # in .npy files
-        for i in range(0, photo_height * photo_width, block_size = 8):
+        for i in range(0, photo_height * photo_width, block_size):
+            print("2, " + str(i) + " of " + str(photo_height * photo_width))
             data_for_csv = all_images[:, i:(i + 7)]
-            np.save(self.parent_folder + "\\temp" + str(i), data_for_csv)
+            np.save(self.parent_folder + "temp/" + str(i), data_for_csv)
             # D:\Laptop
 
-        for i in range(0, photo_height * photo_width, block_size = 8):
-            little_block = np.load(self.parent_folder + "\\temp" +str(i))
+        for i in range(0, photo_height * photo_width, block_size):
+            print("3, " + str(i) + " of " + str(photo_height * photo_width))
+            little_block = np.load(self.parent_folder + "temp/" + str(i) + ".npy")
             little_block_df = pd.DataFrame(little_block, index=indices)
             offset = None
             res = little_block_df.resample('1s', loffset=offset).asfreq()
@@ -833,21 +838,24 @@ class PreProcess:
             # at this stage could do a mean squared error calculation to see what sampling process gets the
             # closest results?
             downsampled_npy = downsampled.to_numpy()
-            np.save(self.parent_folder + "\\temp" +str(i) + 'downsampled', downsampled_npy)
+            np.save(self.parent_folder + "temp/" +str(i) + 'downsampled', downsampled_npy)
 
-        resampled_indices = downsampled.index()
-
+        resampled_indices = downsampled.index
         resampled_all_images = np.zeros(len(resampled_indices), photo_height * photo_width)
-        for i in range(0, photo_height * photo_width, block_size = 8):
-            resampled_all_images[:, i:(i + 7)] = np.load(self.parent_folder + "\\temp" + str(i))
+
+        for i in range(0, photo_height * photo_width, block_size):
+            print("4, " + str(i) + " of " + str(photo_height * photo_width))
+            resampled_all_images[:, i:(i + 7)] = np.load(self.parent_folder + "/temp/" + str(i) + ".npy")
 
         resampled_dataset = pd.DataFrame(resampled_all_images, index=resampled_indices)
-        resampled_dataset.to_csv(self.parent_folder + "\\temp\\" + resampled.csv")
+
+        resampled_dataset.to_csv(self.parent_folder + "resampled.csv")
 
         for i in range(0, len(resampled_indices)):
             image = resampled_all_images[i,:]
-            cv2.imwrite(path + str(resampled_indices[i]), image)
+            cv2.imwrite(resampled_folder_name + str(resampled_indices[i]), image)
 
+        print("DONE")
         
 
 
