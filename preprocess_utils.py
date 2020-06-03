@@ -145,15 +145,16 @@ class PreProcess:
             cv2.imwrite(destination_filename, np.rot90(image, num_rotations), [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
     @staticmethod
-    def normalise_image(file_name, destination):
+    def normalise_image(file_name, source_folder_name, destination_folder_name):
         """Reads image, normalises it and saves it withe new name
 
         :param file_name: full path to the file to normalise
         :param destination: full path to destination folder
         :type file_name: str
         """
-        normalised_image_name = destination + '/' + file_name[:-4] + 'normed.png'
-        image = cv2.imread(file_name, cv2.IMREAD_GRAYSCALE)
+        normalised_image_name = destination_folder_name + '/' + file_name
+        print(normalised_image_name)
+        image = cv2.imread(source_folder_name + '/' + file_name, cv2.IMREAD_GRAYSCALE)
         new_image = image.astype(np.uint8)
         new_image = cv2.equalizeHist(new_image)
         cv2.imwrite(normalised_image_name, new_image)
@@ -265,9 +266,13 @@ class PreProcess:
 
         print("Writing to folder +" + str(normalised_folder_name))
         photo_list = self.get_photo_list(folder_name)
+        print(photo_list)
         for i, name in enumerate(photo_list):
-            file_name = folder_name + '/' + name
-            self.normalise_image(file_name, normalised_folder_name)
+            #file_name = folder_name + '/' + name
+            file_name = name
+            print(file_name)
+            print(normalised_folder_name)
+            self.normalise_image(file_name, folder_name, normalised_folder_name)
 
     def mask_images(self, folder_name, mask_image_name):
         """ Masks images. Needs mask where background = 0. Writes to new folder.
