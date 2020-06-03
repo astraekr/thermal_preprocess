@@ -794,6 +794,8 @@ class PreProcess:
         # start looping through as chunks in big .csv
         #       un-un-ravel rows back into 'images'
         #       save 'images' as images
+        actual_pic_width = 1024
+        actual_pic_height = 640
         block_size = 8
         resampled_folder_name = folder_name + '_resampled'
 
@@ -822,7 +824,7 @@ class PreProcess:
         # in .npy files
         for i in range(0, photo_height * photo_width, block_size):
             print("2, " + str(i) + " of " + str(photo_height * photo_width))
-            data_for_csv = all_images[:, i:(i + 7)]
+            data_for_csv = all_images[:, i:(i + 8)]
             np.save(self.parent_folder + "temp/" + str(i), data_for_csv)
             # D:\Laptop
 
@@ -841,140 +843,26 @@ class PreProcess:
             np.save(self.parent_folder + "temp/" +str(i) + 'downsampled', downsampled_npy)
 
         resampled_indices = downsampled.index
-        resampled_all_images = np.zeros(len(resampled_indices), photo_height * photo_width)
+        resampled_all_images = np.zeros((len(resampled_indices), photo_height * photo_width))
 
         for i in range(0, photo_height * photo_width, block_size):
             print("4, " + str(i) + " of " + str(photo_height * photo_width))
-            resampled_all_images[:, i:(i + 7)] = np.load(self.parent_folder + "/temp/" + str(i) + ".npy")
+            resampled_all_images[:, i:(i + 8)] = np.load(self.parent_folder + "/temp/" + str(i) + 'downsampled' + ".npy")
 
+        print("Building Pandas DataFrame")
         resampled_dataset = pd.DataFrame(resampled_all_images, index=resampled_indices)
-
+        print("Writing .csv file")
         resampled_dataset.to_csv(self.parent_folder + "resampled.csv")
 
         for i in range(0, len(resampled_indices)):
-            image = resampled_all_images[i,:]
-            cv2.imwrite(resampled_folder_name + str(resampled_indices[i]), image)
+            print("5, " + str(i) + " of " + str(len(resampled_indices)))
+            image = np.reshape(resampled_all_images[i,:], (actual_pic_height, actual_pic_width))
+            cv2.imwrite(resampled_folder_name + '/' + str(resampled_indices[i])+'.png', image.astype(np.uint16))
 
         print("DONE")
-        
-
-
-    def set_sampling_frequency(self, folder_name):
-        """ oversamples then under samples the dataset to get data at a constant frequency
-
-        :param folder_name:
-        :return:
-        """
-        resampled_folder_name = folder_name + '_resampled'
-        """
-        try:
-            print("Making dir " + str(resampled_folder_name) + " for resampling")
-            os.mkdir(resampled_folder_name)
-        except OSError:
-            print("Folder exists, have you already done this resampling??")
-            return
-        """
-        print("Writing to folder +" + str(resampled_folder_name))
-        photo_list = self.get_photo_list(folder_name)
-        indices = self.get_indices_from_filenames(folder_name)
-        size_photo = cv2.imread( folder_name + '/' + photo_list[0], cv2.IMREAD_ANYDEPTH)
-        photo_height, photo_width = np.shape(size_photo)
-        all_images = np.zeros((len(photo_list), photo_height * photo_width))
-
-        #build the var with all images pixels in it
-        for i, name in enumerate(photo_list):
-            file_name = folder_name + '/' + name
-            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
-            all_images[i, :] = image.ravel()
-
-
-        # following code is the code from the old .csvs in the national grid data
-        print('for loop done')
-        df = pd.DataFrame(all_images, index=indices)
-        print('dataframe made')
-        offset = None
-        x = df.resample('10S', loffset=offset).sum()  # works but the data is offset by 3 minutes
-        upsampled_csv = x.interpolate(method='time')
-        print('upsample done')
-        print(upsampled_csv.head(50))
-        downsampled_csv = upsampled_csv.resample('10T').mean()
-        print(downsampled_csv.head(50))
-        #downsampledCsv.to_csv(csv[:-4] + '_10minbase.csv')
-
-
-
-        print(df)
-        return
 
     def parser(self, x):
         return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
-
-    def resample_csv(self, csv_name, folder_name):
-        """
-
-        :param csv_name: full path to csv file to be read
-        :type csv_name str
-        :return:
-        """
-        # do it without chunks to start with
-        offset = None
-        df = pd.read_csv(csv_name, parse_dates=True,
-                                 header=0, index_col=0, date_parser=self.parser)
-        res = df.resample('1s', loffset=offset).asfreq()
-        upsampled = res.interpolate(method='time')
-        downsampled = upsampled.resample('1T').mean()  # likely need to change the resampling method here
-
-        # plotting
-        ds_index_dates = dates.date2num(downsampled.index)  # doesn't work
-        indices = self.get_indices_from_filenames(self.parent_folder + folder_name)
-        index_dates = dates.date2num(indices)
-        fig, ax = plt.subplots()
-        ax.plot_date(index_dates, df.values, linestyle='solid', marker='None', label='original')
-        ax.plot_date(ds_index_dates, downsampled.values, linestyle='solid', marker='None', label='downsampled')
-        ax.legend()
-        ax.minorticks_on()
-        ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-        fig.set_figwidth(30)
-        fig.savefig(
-            self.parent_folder + '/sampling_dates_test.png')
-        fig.clf()
-
-        return
-
-        chunksize = 10
-        offset = None
-        for chunk in pd.read_csv(csv_name, chunksize=chunksize, parse_dates=True,
-                                 header=0, index_col=0, date_parser=self.parser):
-            print('pre')
-            print (chunk)
-            res = chunk.resample('1s', loffset=offset).asfreq()
-            upsampled = res.interpolate(method='time')
-            downsampled = upsampled.resample('1T').mean()  # likely need to change the resampling method here
-            return
-
-
-    def write_flat_images_csv(self, folder_name, csv_name):
-        """ oversamples then under samples the dataset to get data at a constant frequency
-
-        :param folder_name:
-        :return:
-        """
-        photo_list = self.get_photo_list(folder_name)
-        indices = self.get_indices_from_filenames(folder_name)
-        size_photo = cv2.imread( folder_name + '/' + photo_list[0], cv2.IMREAD_ANYDEPTH)
-        photo_height, photo_width = np.shape(size_photo)
-        # all_images = np.zeros((len(photo_list), photo_height * photo_width))
-        all_images = np.zeros((len(photo_list), 1))
-
-        for i, name in enumerate(photo_list):
-            file_name = folder_name + '/' + name
-            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
-            all_images[i, :] = image.ravel()[0]
-
-        print('for loop done')
-        df = pd.DataFrame(all_images, index=indices)
-        df.to_csv(folder_name + '/' + csv_name)
-
 
     def test(self):
         print("A test github pycharm commit method")
