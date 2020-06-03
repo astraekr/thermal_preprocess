@@ -153,7 +153,6 @@ class PreProcess:
         :type file_name: str
         """
         normalised_image_name = destination_folder_name + '/' + file_name
-        print(normalised_image_name)
         image = cv2.imread(source_folder_name + '/' + file_name, cv2.IMREAD_GRAYSCALE)
         new_image = image.astype(np.uint8)
         new_image = cv2.equalizeHist(new_image)
@@ -266,12 +265,8 @@ class PreProcess:
 
         print("Writing to folder +" + str(normalised_folder_name))
         photo_list = self.get_photo_list(folder_name)
-        print(photo_list)
         for i, name in enumerate(photo_list):
-            #file_name = folder_name + '/' + name
             file_name = name
-            print(file_name)
-            print(normalised_folder_name)
             self.normalise_image(file_name, folder_name, normalised_folder_name)
 
     def mask_images(self, folder_name, mask_image_name):
