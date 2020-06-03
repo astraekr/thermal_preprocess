@@ -864,5 +864,30 @@ class PreProcess:
     def parser(self, x):
         return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
 
+    def get_and_plot_average_pixel_value(self, folder_name):
+
+        # get image list
+        average_pixel_values = []
+        photo_list = self.get_photo_list(folder_name)
+
+        for name in photo_list:
+            image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            average_pixel_values.append(np.mean(image))
+
+        # plot
+        fig, ax = plt.subplots()
+        indices = self.get_indices_from_filenames(folder_name)
+        index_dates = dates.date2num(indices)
+        ax.plot_date(index_dates, average_pixel_values, xdate=True, linestyle='solid', marker='None')
+        ax.grid(b=True, which='major', color='#666666', linestyle='-')
+        # Show the minor grid lines with very faint and almost transparent grey lines
+        ax.minorticks_on()
+        ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
+        fig.set_figwidth(40)
+        fig.savefig(
+            self.parent_folder + 'analysis/timeseries_average_pixels.png')
+        fig.clf()
+        # save
+
     def test(self):
         print("A test github pycharm commit method")
