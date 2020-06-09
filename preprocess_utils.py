@@ -118,6 +118,38 @@ class PreProcess:
 
         return stitched_folder_name
 
+    def unstitch_image(self, file_path):
+        """splits a stitched image back into the 8 constituent parts
+
+        :param file_path: full path to the stitched image to be unstitched
+        :return:
+        """
+        new_height = 320
+        new_width = 256
+        stitched_image = cv2.imread(file_path, cv2.IMREAD_ANYDEPTH)
+
+        stitched_image_one = stitched_image[0:new_height, :new_width]
+        stitched_image_two = stitched_image[0:new_height, new_width:new_width * 2]
+        stitched_image_three = stitched_image[0:new_height, new_width * 2:new_width * 3]
+        stitched_image_four = stitched_image[0:new_height, new_width * 3:new_width * 4]
+
+        stitched_image_five = stitched_image[new_height:new_height * 2, :new_width]
+        stitched_image_six = stitched_image[new_height:new_height * 2, new_width:new_width * 2]
+        stitched_image_seven = stitched_image[new_height:new_height * 2, new_width * 2:new_width * 3]
+        stitched_image_eight = stitched_image[new_height:new_height * 2, new_width * 3:new_width * 4]
+
+        cv2.imwrite(file_path[:-4]+ 'one.png', stitched_image_one)
+        cv2.imwrite(file_path[:-4] + 'two.png', stitched_image_two)
+        cv2.imwrite(file_path[:-4] + 'three.png', stitched_image_three)
+        cv2.imwrite(file_path[:-4] + 'four.png', stitched_image_four)
+
+        cv2.imwrite(file_path[:-4] + 'five.png', stitched_image_five)
+        cv2.imwrite(file_path[:-4] + 'six.png', stitched_image_six)
+        cv2.imwrite(file_path[:-4] + 'seven.png', stitched_image_seven)
+        cv2.imwrite(file_path[:-4] + 'eight.png', stitched_image_eight)
+
+        print('DONE')
+
     def rotate_image_set(self, folder_name, num_rotations=3):
         """Rotates images in a folder
 
@@ -144,7 +176,6 @@ class PreProcess:
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
             cv2.imwrite(destination_filename, np.rot90(image, num_rotations), [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
-
     def rotate_image(self, file_name, num_rotations=3):
         """rotates an individual image and pops it in the parent folder
 
@@ -154,7 +185,6 @@ class PreProcess:
         image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
         destination_filename = self.parent_folder + os.path.basename(file_name)
         cv2.imwrite(destination_filename, np.rot90(image, num_rotations), [cv2.IMWRITE_PNG_COMPRESSION, 0])
-
 
     @staticmethod
     def normalise_image(file_name, source_folder_name, destination_folder_name):
@@ -292,7 +322,7 @@ class PreProcess:
         """
 
         photo_list = self.get_photo_list(folder_name)
-        masked_folder_name = folder_name + '_masked'
+        masked_folder_name = folder_name + '_background'
 
         try:
             print("Making dir " + str(masked_folder_name) + " for masking")
@@ -432,6 +462,7 @@ class PreProcess:
 
     def unmask_images(self, folder_name, background_image_name, mask_image_name):
         """For presentation. Uses background imagery from a full image rather than a flat black mask.
+        Results aren't particularly nice to look at unfortunately.
 
         :param folder_name: path to folder to be unmasked
         :param background_image_name: path to image to be used as constant background for full image set
@@ -916,6 +947,21 @@ class PreProcess:
             average_pixel_values.append(np.mean(image))
 
         return average_pixel_values
+
+    def get_average_nonzero_pixel_value(self, folder_name):
+        # get image list
+        average_pixel_values = []
+        photo_list = self.get_photo_list(folder_name)
+
+        for name in photo_list:
+            image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            image = image.ravel()
+            image.sort()
+            non_zero_pixels = image[np.nonzero(image)]
+            average_pixel_values.append(np.mean(non_zero_pixels))
+
+        return average_pixel_values
+
 
     def get_and_plot_average_pixel_value(self, folder_name):
 
