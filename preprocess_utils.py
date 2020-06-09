@@ -144,6 +144,18 @@ class PreProcess:
             image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
             cv2.imwrite(destination_filename, np.rot90(image, num_rotations), [cv2.IMWRITE_PNG_COMPRESSION, 0])
 
+
+    def rotate_image(self, file_name, num_rotations=3):
+        """rotates an individual image and pops it in the parent folder
+
+        :param file_name: full path to file name
+        :return:
+        """
+        image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH)
+        destination_filename = self.parent_folder + os.path.basename(file_name)
+        cv2.imwrite(destination_filename, np.rot90(image, num_rotations), [cv2.IMWRITE_PNG_COMPRESSION, 0])
+
+
     @staticmethod
     def normalise_image(file_name, source_folder_name, destination_folder_name):
         """Reads image, normalises it and saves it withe new name
@@ -536,15 +548,27 @@ class PreProcess:
             fig.clf()
 
     def get_pixel_timeseries(self, folder_name, indices):
-        (x_index, y_index) = indices
+        (y_index, x_index) = indices
         intensities = []
         photo_list = self.get_photo_list(folder_name)
         for image_name in photo_list:
             image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
-            intensities.append(image[x_index, y_index])
+            intensities.append(image[y_index, x_index])
 
         print(intensities)
         return intensities
+
+    def get_average_around_pixel(self, folder_name, indices):
+        (y_index, x_index) = indices
+        # (tl_row, tl_column) = top_left
+        # (br_row, br_column) = bottom_right
+        photo_list = self.get_photo_list(folder_name)
+        averages = np.zeros((len(photo_list)))
+        for i, name in enumerate(photo_list):
+            photo = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
+            averages[i] = np.mean(photo[y_index-1:y_index+2, x_index-1:x_index+2])
+
+        return averages
 
     def plot_intensity_lines(self, folder_name, columns, froms, tos, destination):
         """The nice embarrassing thing about using github is when you start resorting to code like this
@@ -590,7 +614,15 @@ class PreProcess:
             plt.close(fig)
 
     def get_min_max_intensity_lines(self, folder_name, columns, froms, tos, non_zero=True):
+        """ Used to get the maximums and minimums within the intensity lines, for plotting
 
+        :param folder_name:
+        :param columns:
+        :param froms:
+        :param tos:
+        :param non_zero:
+        :return:
+        """
         minimum_pixel_values = []
         maximum_pixel_values = []
         photo_list = self.get_photo_list(folder_name)
@@ -798,6 +830,7 @@ class PreProcess:
         actual_pic_height = 640
         block_size = 8
         resampled_folder_name = folder_name + '_resampled'
+        temp_folder_name = self.parent_folder + 'temp'
 
         try:
             print("Making dir " + str(resampled_folder_name) + " for resampling")
@@ -805,6 +838,14 @@ class PreProcess:
         except OSError:
             print("Folder exists, have you already done this resampling??")
             return
+
+        try:
+            print("Making dir " + str(temp_folder_name) + " for resampling")
+            os.mkdir(temp_folder_name)
+        except OSError:
+            print("Folder temp exists, have you already done this resampling??")
+            return
+
 
         print("Writing to folder +" + str(resampled_folder_name))
         source_folder_name = folder_name
@@ -849,14 +890,14 @@ class PreProcess:
             print("4, " + str(i) + " of " + str(photo_height * photo_width))
             resampled_all_images[:, i:(i + 8)] = np.load(self.parent_folder + "/temp/" + str(i) + 'downsampled' + ".npy")
 
-        print("Building Pandas DataFrame")
-        resampled_dataset = pd.DataFrame(resampled_all_images, index=resampled_indices)
-        print("Writing .csv file")
-        resampled_dataset.to_csv(self.parent_folder + "resampled.csv")
+        #print("Building Pandas DataFrame")
+        #resampled_dataset = pd.DataFrame(resampled_all_images, index=resampled_indices)
+        #print("Writing .csv file")
+        #resampled_dataset.to_csv(self.parent_folder + "resampled.csv")
 
         for i in range(0, len(resampled_indices)):
             print("5, " + str(i) + " of " + str(len(resampled_indices)))
-            image = np.reshape(resampled_all_images[i,:], (actual_pic_height, actual_pic_width))
+            image = np.reshape(resampled_all_images[i,:], (photo_height, photo_width))
             cv2.imwrite(resampled_folder_name + '/' + str(resampled_indices[i])+'.png', image.astype(np.uint16))
 
         print("DONE")
@@ -864,7 +905,7 @@ class PreProcess:
     def parser(self, x):
         return datetime.datetime.strptime(x, '%Y-%m-%d %H:%M:%S')
 
-    def get_and_plot_average_pixel_value(self, folder_name):
+    def get_average_pixel_value(self, folder_name):
 
         # get image list
         average_pixel_values = []
@@ -874,6 +915,11 @@ class PreProcess:
             image = cv2.imread(folder_name + '/' + name, cv2.IMREAD_ANYDEPTH)
             average_pixel_values.append(np.mean(image))
 
+        return average_pixel_values
+
+    def get_and_plot_average_pixel_value(self, folder_name):
+
+        average_pixel_values = self.get_average_pixel_value(folder_name)
         # plot
         fig, ax = plt.subplots()
         indices = self.get_indices_from_filenames(folder_name)
@@ -885,9 +931,10 @@ class PreProcess:
         ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
         fig.set_figwidth(40)
         fig.savefig(
-            self.parent_folder + 'analysis/timeseries_average_pixels.png')
+            self.parent_folder + 'analysis/timeseries_average_pixels_.png')
         fig.clf()
         # save
+        return average_pixel_values, index_dates
 
     def test(self):
         print("A test github pycharm commit method")
