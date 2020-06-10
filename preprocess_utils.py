@@ -32,6 +32,7 @@ class PreProcess:
         self.parent_folder = working_dir
         self.folder_list = self.get_list_of_folders('*rotated90')
         self.full_folder_list = self.get_parent_subfolders()
+        self.folder_basename = os.path.basename(os.path.normpath(working_dir))
         # TODO add photo_list to this - is basically used everywhere
         # TODO add photo sizes to this
         # TODO change the path handling to be platform-agnostic
