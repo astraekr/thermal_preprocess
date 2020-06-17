@@ -24,6 +24,22 @@ class CsvPreprocess():
         self.csv_dataframe = pd.read_csv(self.csv_file, parse_dates=True, header=0, index_col=0, date_parser=parser)
 
 
+    def load_variables_csv(self, csv_name):
+        """Loads csv into pandas dataframe, returns it
+
+        :param csv_name: path to and including the csv
+        :return: pandas dataframe of the csv
+        """
+
+
+    def resample_csv(self, csv_name):
+        """Resamples the csv to higher frequency, as per the image resampling
+
+        :param csv: path to and including the csv
+        :return:
+        """
+        df = self.load_variables_csv(csv_name)
+
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         """Credit to Jason Brownlee at Machine Learning Mastery
 
@@ -122,7 +138,7 @@ class CsvPreprocess():
 
             integrals.append(integral_this_interval)
 
-        print integrals
+        print(integrals)
 
 
     def normalise_and_plot(self):
@@ -143,7 +159,7 @@ class CsvPreprocess():
         dataset.drop(['voltage'], axis=1, inplace=True)
         #dataset.drop(['dn', 'dm', 'sn', 'sm', 'sx', 'fan', 'voltage'], axis=1)
 
-        data_points_numerical = removeText(dataset)
+        data_points_numerical = self.removeText(dataset)
         values = data_points_numerical.astype('float32')
         plt.plot(values[:, 0], label='ta')
         plt.plot(values[:, 1] + 2, label='ua')

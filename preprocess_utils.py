@@ -378,6 +378,10 @@ class PreProcess:
         print("Getting histogram for:" + str(folder_name) + '/' + str(image_name))
         image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
         plt.hist(image.ravel(), 256, [0, 65535])
+        plt.xlabel('Pixel Intensity')
+        plt.ylabel('Number of pixels')
+        plt.title('Histogram of normalised reference image. Overnight2')
+        plt.savefig(save_location + 'histogram.png')
         plt.savefig(save_location + 'histogram.eps', format='eps')
         # plt.show()
 
@@ -522,26 +526,28 @@ class PreProcess:
         plt.savefig(save_location + 'histogram.eps', format='eps')
         # plt.show()
 
-    # def plot_pixel_timeseries(self, folder_name, (x_index, y_index)):
+    # def plot_pixel_timeseries(self, folder_name, (y_index, x_index)):
+    # def plot_pixel_timeseries(self, folder_name, ([y_index_1, y_index_2], [x_index_1, x_index_2)):
     def plot_pixel_timeseries(self, folder_name, indices):
         """Gets series of pixel intensities and plots it then saves it
 
         :param folder_name: folder to extract series from
-        :param (x_index, y_index) index of the pixel to plot
+        :param (y_index, x_index) index of the pixel to plot
         :type folder_name str
-        :type (x_index, y_index) tuple of ints, or tuple of lists of ints
+        :type (y_index, x_index) tuple of ints, or tuple of lists of ints
         :return:
         """
         # TODO, swap x and y axes in the parameters
         # single pixel to plot
-        (x_index, y_index) = indices
+        # indexed in the style of python: [row, column] = [y, x]
+        (y_index, x_index) = indices
         if type(x_index) == int:
             print('Plotting ' + str(x_index) + ' , ' + str(y_index))
             ts = self.get_pixel_timeseries(folder_name, indices)
             indices = self.get_indices_from_filenames(folder_name)
             index_dates = dates.date2num(indices)
             fig, ax = plt.subplots()
-            ax.plot_date(index_dates[500:600], ts[500:600], xdate=True, linestyle='solid', marker='None',
+            ax.plot_date(index_dates, ts, xdate=True, linestyle='solid', marker='None',
                          label=str(x_index) + ' , ' + str(y_index))
             ax.legend()
             ax.grid(b=True, which='major', color='#666666', linestyle='-')
@@ -549,7 +555,8 @@ class PreProcess:
             # Show the minor grid lines with very faint and almost transparent grey lines
             ax.minorticks_on()
             ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-            fig.set_figwidth(40)
+            ax.tick_params(axis='x', labelrotation=30.0)
+            #fig.set_figwidth(40)
             fig.savefig(self.parent_folder + 'analysis/timeseries_TEST2_' + str(x_index) + '_' + str(y_index) + '.png')
             fig.savefig(self.parent_folder + 'analysis/timeseries_TEST2_' + str(x_index) + '_' + str(y_index) + '.svg')
             fig.clf()
@@ -563,7 +570,7 @@ class PreProcess:
                 indices = self.get_indices_from_filenames(folder_name)
                 index_dates = dates.date2num(indices)
 
-                ax.plot_date(index_dates[500:600], ts[500:600], xdate=True, linestyle='solid', marker='None',
+                ax.plot_date(index_dates, ts, xdate=True, linestyle='solid', marker='None',
                              label=str(x_index[i]) + ' , ' + str(y_index[i]))
 
             ax.legend()
@@ -572,7 +579,8 @@ class PreProcess:
             # Show the minor grid lines with very faint and almost transparent grey lines
             ax.minorticks_on()
             ax.grid(b=True, which='minor', color='#999999', linestyle='-', alpha=0.2)
-            fig.set_figwidth(40)
+            ax.tick_params(axis='x', labelrotation=30.0)
+            #fig.set_figwidth(40)
             fig.savefig(
                 self.parent_folder + 'analysis/timeseries_TEST_' + str(x_index) + '_' + str(y_index) + '.png')
             fig.savefig(
@@ -580,6 +588,8 @@ class PreProcess:
             fig.clf()
 
     def get_pixel_timeseries(self, folder_name, indices):
+
+        # indexed in the style of python: [row, column] = [y, x]
         (y_index, x_index) = indices
         intensities = []
         photo_list = self.get_photo_list(folder_name)
@@ -591,6 +601,8 @@ class PreProcess:
         return intensities
 
     def get_average_around_pixel(self, folder_name, indices):
+
+        # indexed in the style of python: [row, column] = [y, x]
         (y_index, x_index) = indices
         # (tl_row, tl_column) = top_left
         # (br_row, br_column) = bottom_right
@@ -628,19 +640,27 @@ class PreProcess:
             line7 = image[froms[6]:tos[6], columns[6]]
             line8 = image[froms[7]:tos[7], columns[7]]
             fig, (ax1, ax2) = plt.subplots(ncols=2)
-            ax1.plot(line1, label='one')
-            ax1.plot(line2, label='two')
-            ax1.plot(line3, label='three')
-            ax1.plot(line4, label='four')
-            ax2.plot(line5, label='five')
-            ax2.plot(line6, label='six')
-            ax2.plot(line7, label='seven')
-            ax2.plot(line8, label='eight')
-            ax1.set_ylim(minimum - (0.1 * minimum), maximum + (0.1 * maximum))
-            ax2.set_ylim(minimum - (0.1 * minimum), maximum + (0.1 * maximum))
+            ax1.plot(line1, label='Cam1')
+            ax1.plot(line2, label='Cam2')
+            ax1.plot(line3, label='Cam3')
+            ax1.plot(line4, label='Cam4')
+            ax2.plot(line5, label='Cam5')
+            ax2.plot(line6, label='Cam6')
+            ax2.plot(line7, label='Cam7')
+            ax2.plot(line8, label='Cam8')
+            ax1.set_ylim(minimum - (0.01 * minimum), maximum + (0.01 * maximum))
+            ax2.set_ylim(minimum - (0.01 * minimum), maximum + (0.01 * maximum))
+            ax1.set_ylabel('Pixel intensity value')
+            ax2.set_ylabel('Pixel intensity value')
+            ax1.set_xlabel('Pixels')
+            ax2.set_xlabel('Pixels')
+            ax1.set_title('Pixel intensities down length of CSE1')
+            ax2.set_title('Pixel intensities down length of CSE2')
+
             ax1.legend()
             ax2.legend()
-            fig.set_figwidth(20)
+            fig.set_figwidth(12)
+
             fig.savefig(self.parent_folder + destination + '/' + str(name) + 'intensitylineplots.png')
             fig.clf()
             plt.close(fig)
