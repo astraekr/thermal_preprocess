@@ -20,16 +20,9 @@ def parser(x):
 class CsvPreprocess():
     def __init__(self, working_dir, csv_filename):
         self.parent_folder = working_dir
-        self.csv_file = csv_filename
-        self.csv_dataframe = pd.read_csv(self.csv_file, parse_dates=True, header=0, index_col=0, date_parser=parser)
+        self.csv_filename = self.parent_folder + csv_filename
+        self.csv_dataframe = pd.read_csv(self.csv_filename, parse_dates=True, header=0, index_col=0, date_parser=parser)
 
-
-    def load_variables_csv(self, csv_name):
-        """Loads csv into pandas dataframe, returns it
-
-        :param csv_name: path to and including the csv
-        :return: pandas dataframe of the csv
-        """
 
 
     def resample_csv(self, csv_name):
@@ -85,6 +78,19 @@ class CsvPreprocess():
                 numDataset[index, col] = re.sub(non_decimal, "", elem)
 
         return numDataset
+
+    def remove_text_dataframe(self):
+        # Takes Pandas DataFrame as an argument
+        # Remove all text from the dataset
+        # returns a matrix of the values - not a dataframe
+
+        for column in self.csv_dataframe:
+            print(self.csv_dataframe[column])
+            if self.csv_dataframe[column].dtype == object:
+                self.csv_dataframe[column] = self.csv_dataframe[column].str.extract('(\d+)', expand=False)
+                self.csv_dataframe[column].astype(np.int64)
+        return
+
 
     def plot_fft_column_timeseries(self, column_index, column_name, plot_name):
         """Gets and plots fft of a column (single variable) of the csv dataset
