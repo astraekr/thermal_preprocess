@@ -3,6 +3,7 @@ import pandas as pd
 import sklearn.preprocessing as skpp
 import re
 import numpy as np
+import os
 from pandas import concat
 import matplotlib
 matplotlib.use('Agg')
@@ -22,16 +23,33 @@ class CsvPreprocess():
         self.parent_folder = working_dir
         self.csv_filename = self.parent_folder + csv_filename
         self.csv_dataframe = pd.read_csv(self.csv_filename, parse_dates=True, header=0, index_col=0, date_parser=parser)
+        self.full_folder_list = self.get_parent_subfolders()
+        self.folder_basename = os.path.basename(os.path.normpath(working_dir))
+        print('Working in: ' + working_dir)
+        print('Folders are: ')
+        for i in range(0, len(self.full_folder_list)):
+            print(self.full_folder_list[i])
+
+    def get_parent_subfolders(self):
+        """Prints all directories in the chosen 'working/parent dir', just because
+
+        :return: subfolders
+        """
+        return [x[0] for x in os.walk(self.parent_folder)]
 
 
-
-    def resample_csv(self, csv_name):
+    def resample_csv(self):
         """Resamples the csv to higher frequency, as per the image resampling
 
         :param csv: path to and including the csv
         :return:
         """
-        df = self.load_variables_csv(csv_name)
+        offset = None
+        res = self.csv_dataframe.resample('1s', loffset=offset).asfreq() #ORIGINAL
+        upsampled = res.interpolate(method='time')
+        downsampled = upsampled.resample('1T').mean()
+        self.csv_dataframe = downsampled
+        return
 
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         """Credit to Jason Brownlee at Machine Learning Mastery
