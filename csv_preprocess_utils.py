@@ -6,7 +6,7 @@ import numpy as np
 import os
 from pandas import concat
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import scipy.integrate as itgrt
 
@@ -26,9 +26,9 @@ class CsvPreprocess():
         self.full_folder_list = self.get_parent_subfolders()
         self.folder_basename = os.path.basename(os.path.normpath(working_dir))
         print('Working in: ' + working_dir)
-        print('Folders are: ')
-        for i in range(0, len(self.full_folder_list)):
-            print(self.full_folder_list[i])
+        #print('Folders are: ')
+        #for i in range(0, len(self.full_folder_list)):
+            #print(self.full_folder_list[i])
 
     def get_parent_subfolders(self):
         """Prints all directories in the chosen 'working/parent dir', just because
@@ -44,12 +44,17 @@ class CsvPreprocess():
         :param csv: path to and including the csv
         :return:
         """
+        #for column in self.csv_dataframe:
+        #    self.csv_dataframe[column].astype(np.float)
         offset = None
         res = self.csv_dataframe.resample('1s', loffset=offset).asfreq() #ORIGINAL
         upsampled = res.interpolate(method='time')
         downsampled = upsampled.resample('1T').mean()
         self.csv_dataframe = downsampled
         return
+
+    def csv_to_float(self):
+        self.csv_dataframe = self.csv_dataframe.astype(np.float)
 
     def series_to_supervised(data, n_in=1, n_out=1, dropnan=True):
         """Credit to Jason Brownlee at Machine Learning Mastery
@@ -101,12 +106,16 @@ class CsvPreprocess():
         # Takes Pandas DataFrame as an argument
         # Remove all text from the dataset
         # returns a matrix of the values - not a dataframe
-
+        numeric_const_pattern = '[-+]? (?: (?: \d* \. \d+ ) | (?: \d+ \.? ) )(?: [Ee] [+-]? \d+ ) ?'
         for column in self.csv_dataframe:
-            print(self.csv_dataframe[column])
+            #print(self.csv_dataframe[column])
             if self.csv_dataframe[column].dtype == object:
-                self.csv_dataframe[column] = self.csv_dataframe[column].str.extract('(\d+)', expand=False)
-                self.csv_dataframe[column].astype(np.int64)
+                print(column)
+                self.csv_dataframe[column] = self.csv_dataframe[column].str.extract(r'([-+]?\d*\.\d+|\d+)', expand=True)
+                self.csv_dataframe[column] = self.csv_dataframe[column].astype(np.float)
+
+            else:
+                self.csv_dataframe[column] = self.csv_dataframe[column].astype(np.float)
         return
 
 

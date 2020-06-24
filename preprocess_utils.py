@@ -7,7 +7,7 @@ import pandas as pd
 import datetime
 import scipy.signal as sgnl
 import matplotlib
-matplotlib.use('Agg')
+#matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import matplotlib.dates as dates
 
@@ -983,9 +983,7 @@ class PreProcess:
 
         return average_pixel_values
 
-
     def get_and_plot_average_pixel_value(self, folder_name):
-
         average_pixel_values = self.get_average_pixel_value(folder_name)
         # plot
         fig, ax = plt.subplots()
@@ -1002,6 +1000,19 @@ class PreProcess:
         fig.clf()
         # save
         return average_pixel_values, index_dates
+
+    def get_background_image(self, folder_name):
+        """ assumes first image has ambient temperatures and is the 'background' image - works for first image
+        of any of my folders (doesn't care about filename of first image)
+
+        :param folder_name:
+        :return:
+        """
+        folder_list = self.get_photo_list(folder_name)
+        image = cv2.imread(folder_name + folder_list[0], cv2.IMREAD_ANYDEPTH)
+        return image
+
+
 
     def test(self):
         print("A test github pycharm commit method")
