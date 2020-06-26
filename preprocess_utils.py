@@ -454,6 +454,32 @@ class PreProcess:
             colour_image = cv2.applyColorMap(image_8bit, cv2.COLORMAP_JET)
             cv2.imwrite(colourised_image_name, colour_image)
 
+    def pyplot_colourise(self, folder_name):
+        """Re-writes images in the pyplot way with the colourbar
+
+        :return:
+        """
+        colourised_folder_name = folder_name + '_colourised'
+
+        try:
+            print("Making dir " + str(colourised_folder_name) + " for colourisation")
+            os.mkdir(colourised_folder_name)
+        except OSError:
+            print("Folder exists, have you already done this colourisation??")
+            return
+
+        photo_list = self.get_photo_list(folder_name)
+
+        for i, name in enumerate(photo_list):
+            fig, ax = plt.subplots(figsize=(32, 16))
+            file_name = folder_name + '/' + name
+            colourised_image_name = colourised_folder_name + '/' + name
+            image = cv2.imread(file_name, cv2.IMREAD_ANYDEPTH).astype(np.float32)
+            go = ax.imshow(image, cmap='jet')
+            fig.colorbar(go)
+            fig.savefig(colourised_image_name)
+            plt.close()
+
     def subsample_imageset(self, source_folder_name, destination_folder_name, sample_step=4):
         """Copies 1 in every 'sample_step' images to a new folder. Generally for display purposes.
 
@@ -588,7 +614,7 @@ class PreProcess:
             fig.clf()
 
     def get_pixel_timeseries(self, folder_name, indices):
-
+        #TODO think about adjusting this to return np array
         # indexed in the style of python: [row, column] = [y, x]
         (y_index, x_index) = indices
         intensities = []
@@ -597,7 +623,7 @@ class PreProcess:
             image = cv2.imread(folder_name + '/' + image_name, cv2.IMREAD_ANYDEPTH)
             intensities.append(image[y_index, x_index])
 
-        print(intensities)
+        #print(intensities)
         return intensities
 
     def get_average_around_pixel(self, folder_name, indices):
