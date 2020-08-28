@@ -41,6 +41,9 @@ class PreProcess:
         for i in range(0, len(self.full_folder_list)):
             print(self.full_folder_list[i])
 
+    def commit_test_function(self):
+        print("Do nothing")
+
     def get_list_of_folders(self, end_of_folder_name):
         """Looks in the top directory and returns a list of folders
 
